@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teorema de Kleene</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --fondo: #f6f7fb; --tarjeta: #ffffff; --tinta: #2b2d42; --suave: #6b6f86;
+    --borde: #dfe2ee; --acento: #5b4bdb; --acento-suave: #ecebfc; --ok: #1b8a5a;
+    --error: #c1272d; --error-fondo: #fdecec; --resalte: #ffd166; --flecha-hl: #e63946;
+    --caja: #e8eefc; --estado: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-tema="claro"]) {
+      --fondo: #14151f; --tarjeta: #1d1f2e; --tinta: #e8e9f3; --suave: #9ea2bb;
+      --borde: #34374d; --acento: #9b8cff; --acento-suave: #2a2850; --ok: #4cd09a;
+      --error: #ff7b80; --error-fondo: #3a1d22; --resalte: #b8860b; --flecha-hl: #ff6b73;
+      --caja: #2a3350; --estado: #1d1f2e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fondo); color: var(--tinta);
+         font: 16px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 0 0 8px; }
+  .sub { color: var(--suave); margin: 0 0 20px; }
+  .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 14px;
+             padding: 18px; margin-bottom: 18px; }
+  label { font-weight: 600; display: block; margin-bottom: 6px; }
+  input[type=text] { width: 100%; font: 1.25rem ui-monospace, Consolas, monospace; padding: 10px 12px;
+        border-radius: 10px; border: 1.5px solid var(--borde); background: var(--fondo); color: var(--tinta); }
+  input[type=text]:focus { outline: 2px solid var(--acento); border-color: transparent; }
+  .fila { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+  .simbolos button, .btn { font: inherit; cursor: pointer; border-radius: 9px; border: 1px solid var(--borde);
+        background: var(--tarjeta); color: var(--tinta); padding: 6px 12px; }
+  .simbolos button { font-family: ui-monospace, Consolas, monospace; min-width: 40px; }
+  .btn.primario { background: var(--acento); color: #fff; border-color: var(--acento); font-weight: 600; padding: 9px 22px; }
+  .btn:hover { filter: brightness(0.96); } .btn:disabled { opacity: .4; cursor: default; }
+  .chips label { display: inline-flex; margin: 0; font-weight: 500; }
+  .chips input { position: absolute; opacity: 0; }
+  .chips span { padding: 6px 14px; border: 1px solid var(--borde); border-radius: 999px; cursor: pointer; }
+  .chips input:checked + span { background: var(--acento-suave); border-color: var(--acento); color: var(--acento); font-weight: 600; }
+  .chips input:focus-visible + span { outline: 2px solid var(--acento); }
+  .error { background: var(--error-fondo); color: var(--error); border-radius: 10px; padding: 10px 14px; margin-top: 12px; }
+  .pestanas { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--borde); margin-bottom: 18px; }
+  .pestanas button { font: inherit; background: none; border: none; border-bottom: 3px solid transparent;
+        padding: 10px 14px; cursor: pointer; color: var(--suave); }
+  .pestanas button[aria-selected=true] { color: var(--acento); border-color: var(--acento); font-weight: 600; }
+  .panel[hidden] { display: none; }
+  .rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 14px; }
+  .scroll { overflow-x: auto; padding: 6px 0; }
+  .ajustar svg.dibujo { max-width: 100%; height: auto; }
+  svg.dibujo { max-width: none; height: auto; }
+  .arista path { stroke: var(--tinta); stroke-width: 1.6; } .arista polygon { fill: var(--tinta); }
+  .arista text { fill: var(--tinta); font-size: 14px; }
+  .arista.hl path { stroke: var(--flecha-hl); stroke-width: 3; } .arista.hl polygon { fill: var(--flecha-hl); }
+  .arista.hl text { fill: var(--flecha-hl); font-weight: 700; }
+  .caja { fill: var(--caja); stroke: var(--tinta); }
+  .estado circle { fill: var(--estado); stroke: var(--tinta); stroke-width: 1.8; }
+  .estado .doble { fill: none; stroke-width: 1.4; } .estado.hl circle { fill: var(--resalte); }
+  .estado text { font-weight: 700; font-size: 13px; fill: var(--tinta); }
+  .estado.hl text { fill: #2b2d42; }
+  .stepper-barra { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .stepper-barra .cuenta { color: var(--suave); font-size: .9rem; margin-left: auto; }
+  .paso h3 { font-size: 1.05rem; margin: 0 0 4px; } .paso p { margin: 0 0 6px; color: var(--suave); }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { border: 1px solid var(--borde); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--acento-suave); } td small { display: block; color: var(--suave); }
+  .mono { font-family: ui-monospace, Consolas, monospace; }
+  .resultado-er { font: 1.25rem ui-monospace, Consolas, monospace; background: var(--acento-suave);
+        border-radius: 10px; padding: 14px; overflow-x: auto; }
+  .insignia { display: inline-block; border-radius: 999px; padding: 2px 12px; font-size: .88rem; font-weight: 600; }
+  .insignia.ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+  .insignia.no { background: var(--error-fondo); color: var(--error); }
+  .vacio { color: var(--suave); }
+  .veredicto { font-size: 1.1rem; font-weight: 700; }
+  .veredicto.si { color: var(--ok); } .veredicto.no { color: var(--error); }
+  select { font: inherit; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--borde);
+           background: var(--tarjeta); color: var(--tinta); }
+  footer { text-align: center; color: var(--suave); font-size: .85rem; margin-top: 30px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Teorema de Kleene</h1>
+  <p class="sub">Una expresión regular, un autómata finito y todo el camino entre los dos, dibujado paso a paso.</p>
+
+  <form class="tarjeta" id="form-kleene" method="post" action="/">
+    <label for="expresion">Expresión regular</label>
+    <input type="text" id="expresion" name="expresion" value="{{ expresion }}"
+           placeholder="(a U b)*abc" autocomplete="off" spellcheck="false" autofocus>
+    <div class="fila simbolos" aria-label="Insertar símbolo">
+      <button type="button" data-ins="U" title="Unión">U</button>
+      <button type="button" data-ins="*" title="Estrella de Kleene">*</button>
+      <button type="button" data-ins="(">(</button>
+      <button type="button" data-ins=")">)</button>
+      <button type="button" data-ins="ε" title="Palabra vacía">ε</button>
+      <button type="button" data-ins="∅" title="Lenguaje vacío">∅</button>
+    </div>
+    <div class="fila">
+      <span class="chips" role="radiogroup" aria-label="Alfabeto">
+        {% for clave, simbolos in alfabetos.items() %}
+        <label><input type="radio" name="alfabeto" value="{{ clave }}" {{ 'checked' if alfabeto == clave }}>
+          <span>{ {{ simbolos|join(', ') }} }</span></label>
+        {% endfor %}
+      </span>
+      <label style="display:inline-flex;gap:6px;margin:0;font-weight:500">
+        <input type="checkbox" name="ocultar_trampa" {{ 'checked' if ocultar_trampa }}> Ocultar estado trampa (∅)
+      </label>
+      <button class="btn primario" type="submit" style="margin-left:auto">Dibujar</button>
+    </div>
+    {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+  </form>
+
+  <div class="pestanas" role="tablist">
+    <button role="tab" data-panel="p-figuras">Figuras de Kleene</button>
+    <button role="tab" data-panel="p-thompson">1 · ER → AFN-ε</button>
+    <button role="tab" data-panel="p-afd">2 · AFN-ε → AFD</button>
+    <button role="tab" data-panel="p-min">3 · AFD mínimo</button>
+    <button role="tab" data-panel="p-er">4 · Autómata → ER</button>
+    <button role="tab" data-panel="p-probar">5 · Probar cadena</button>
+  </div>
+
+  <section class="panel" id="p-figuras">
+    <div class="tarjeta">
+      <h2>Las figuras base</h2>
+      <p class="sub" style="margin-bottom:0">El teorema de Kleene dice que todo lenguaje descrito por una expresión regular
+      lo reconoce un autómata finito, y al revés. Estas seis figuras son las piezas con las que se arma
+      cualquier autómata a partir de una expresión.</p>
+    </div>
+    <div class="rejilla">
+      {% for f in figuras %}
+      <div class="tarjeta"><h2>{{ f.titulo }}</h2><p class="sub">{{ f.descripcion }}</p>
+        <div class="ajustar">{{ f.svg|safe }}</div></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% macro stepper(pasos) %}
+  <div class="stepper">
+    <div class="stepper-barra">
+      <button type="button" class="btn" data-dir="-1">◀ Anterior</button>
+      <button type="button" class="btn" data-dir="1">Siguiente ▶</button>
+      <span class="cuenta"></span>
+    </div>
+    {% for p in pasos %}
+    <div class="paso" hidden><h3>{{ p.titulo }}</h3><p>{{ p.descripcion }}</p>
+      <div class="scroll">{{ p.svg|safe }}</div></div>
+    {% endfor %}
+  </div>
+  {% endmacro %}
+
+  {% if res %}
+  <section class="panel" id="p-thompson" hidden>
+    <div class="tarjeta"><h2>Construcción de Thompson para <span class="mono">{{ res.texto }}</span></h2>
+      <p class="sub">Se recorre la expresión de adentro hacia afuera y cada operador agrega su figura.
+      Los estados nuevos de cada paso aparecen en amarillo. El último paso es el AFN-ε completo ({{ res.n_afn }} estados).</p>
+      {{ stepper(res.pasos_thompson) }}</div>
+  </section>
+
+  <section class="panel" id="p-afd" hidden>
+    <div class="tarjeta"><h2>Construcción de subconjuntos</h2>
+      <p class="sub">Cada estado del AFD es un conjunto de estados del AFN-ε. Se parte del cierre-ε del estado inicial
+      y, por cada símbolo, se calcula <b>mover</b> y luego el <b>cierre-ε</b>.</p>
+      <div class="scroll"><table>
+        <tr><th>Estado</th><th>Conjunto del AFN-ε</th>{% for s in res.simbolos %}<th>Con «{{ s }}»</th>{% endfor %}</tr>
+        {% for f in res.afd_filas %}
+        <tr><td><b>{{ '→ ' if f.inicial }}{{ f.estado }}{{ ' *' if f.final }}</b></td>
+          <td class="mono">{{ f.conjunto }}</td>
+          {% for s in res.simbolos %}{% set t = f.transiciones[s] %}
+          <td><small>mover: <span class="mono">{{ t.mover }}</span></small>
+              <small>cierre-ε: <span class="mono">{{ t.cierre }}</span></small><b>→ {{ t.destino }}</b></td>
+          {% endfor %}</tr>
+        {% endfor %}
+      </table></div>
+      <p class="sub">→ estado inicial · * estado final · pasaron de {{ res.n_afn }} estados (AFN-ε) a {{ res.n_afd }} (AFD).</p>
+    </div>
+    <div class="tarjeta"><h2>AFD</h2><div class="scroll">{{ res.afd_svg|safe }}</div></div>
+  </section>
+
+  <section class="panel" id="p-min" hidden>
+    <div class="tarjeta"><h2>Minimización por particiones</h2>
+      <p class="sub">Se separan los estados finales de los no finales y se sigue separando los que, con
+      algún símbolo, van a grupos distintos. Cuando ya no se separa ninguno, cada grupo es un estado nuevo.</p>
+      <ol class="mono">{% for r in res.rondas %}<li>{{ r }}</li>{% endfor %}</ol>
+      <div class="scroll"><table><tr><th>Estado mínimo</th><th>Agrupa a</th></tr>
+        {% for e in res.min_estados %}<tr><td><b>{{ e.nombre }}{{ ' *' if e.final }}</b></td><td class="mono">{{ e.grupo }}</td></tr>{% endfor %}
+      </table></div>
+      <p class="sub">El AFD pasó de {{ res.n_afd }} a {{ res.n_min }} estados.</p>
+    </div>
+    <div class="tarjeta"><h2>AFD mínimo</h2><div class="scroll">{{ res.min_svg|safe }}</div></div>
+  </section>
+
+  <section class="panel" id="p-er" hidden>
+    <div class="tarjeta"><h2>De vuelta a la expresión regular</h2>
+      <p class="sub">La otra mitad del teorema: se quitan los estados uno por uno y las flechas se
+      etiquetan con expresiones regulares hasta que solo quedan INI y FIN.</p>
+      {{ stepper(res.pasos_er) }}</div>
+    <div class="tarjeta"><h2>Resultado</h2>
+      <div class="resultado-er">{{ res.er_texto }}</div>
+      <p style="margin-bottom:0">
+        {% if res.equivalente %}<span class="insignia ok">✔ Equivalente a la original</span>
+        {% else %}<span class="insignia no">✖ No equivalente</span>{% endif %}
+        <span class="sub">Se comprobó que describe el mismo lenguaje que <span class="mono">{{ res.texto }}</span>.</span></p>
+    </div>
+  </section>
+
+  <section class="panel" id="p-probar" hidden>
+    <div class="tarjeta"><h2>Probar una cadena</h2>
+      <p class="sub">Escribe una cadena con los símbolos del alfabeto (puede ir vacía) y mira cómo la lee el autómata.</p>
+      <div class="fila" style="margin-top:0">
+        <input type="text" id="cadena" placeholder="ababc" style="max-width:320px" autocomplete="off" spellcheck="false">
+        <select id="automata" aria-label="Autómata">
+          <option value="minimo">AFD mínimo</option><option value="afd">AFD</option><option value="afn">AFN-ε</option>
+        </select>
+        <button type="button" class="btn primario" id="btn-probar">Probar</button>
+      </div>
+      <div id="salida-probar" style="margin-top:14px"></div>
+    </div>
+  </section>
+  {% else %}
+  {% for id, nombre in [('p-thompson','1 · ER → AFN-ε'),('p-afd','2 · AFN-ε → AFD'),('p-min','3 · AFD mínimo'),('p-er','4 · Autómata → ER'),('p-probar','5 · Probar cadena')] %}
+  <section class="panel" id="{{ id }}" hidden>
+    <div class="tarjeta"><h2>{{ nombre }}</h2><p class="vacio">Escribe una expresión regular arriba y pulsa «Dibujar» para ver este paso.</p></div>
+  </section>
+  {% endfor %}
+  {% endif %}
+
+  <footer>Aplicativo del Teorema de Kleene · hecho en Python con Flask</footer>
+</main>
+
+<script>
+(function () {
+  const pestanas = document.querySelectorAll('.pestanas button');
+  const paneles = document.querySelectorAll('.panel');
+  function mostrar(id) {
+    paneles.forEach(p => p.hidden = p.id !== id);
+    pestanas.forEach(b => b.setAttribute('aria-selected', b.dataset.panel === id));
+  }
+  pestanas.forEach(b => b.addEventListener('click', () => mostrar(b.dataset.panel)));
+  mostrar({{ 'true' if res else 'false' }} ? 'p-thompson' : 'p-figuras');
+
+  // Botones para insertar símbolos en la expresión
+  const campo = document.getElementById('expresion');
+  document.querySelectorAll('[data-ins]').forEach(b => b.addEventListener('click', () => {
+    const i = campo.selectionStart ?? campo.value.length, j = campo.selectionEnd ?? i;
+    campo.value = campo.value.slice(0, i) + b.dataset.ins + campo.value.slice(j);
+    campo.focus(); campo.setSelectionRange(i + b.dataset.ins.length, i + b.dataset.ins.length);
+  }));
+
+  // Navegación paso a paso (se reutiliza en Thompson, ER y la simulación)
+  function montarStepper(raiz, inicio) {
+    const pasos = raiz.querySelectorAll('.paso'), cuenta = raiz.querySelector('.cuenta');
+    const [ant, sig] = raiz.querySelectorAll('button[data-dir]');
+    let n = Math.min(inicio ?? 0, pasos.length - 1);
+    function pintar() {
+      pasos.forEach((p, i) => p.hidden = i !== n);
+      ant.disabled = n === 0; sig.disabled = n === pasos.length - 1;
+      cuenta.textContent = 'Paso ' + (n + 1) + ' de ' + pasos.length;
+    }
+    ant.onclick = () => { n--; pintar(); }; sig.onclick = () => { n++; pintar(); };
+    pintar();
+  }
+  document.querySelectorAll('#p-thompson .stepper, #p-er .stepper').forEach(s => montarStepper(s));
+
+  // Probar cadena (consulta al servidor)
+  const boton = document.getElementById('btn-probar');
+  if (boton) boton.addEventListener('click', async () => {
+    const f = document.getElementById('form-kleene'), salida = document.getElementById('salida-probar');
+    salida.textContent = '';
+    const r = await fetch('/api/probar', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({expresion: f.expresion.value, alfabeto: f.alfabeto.value,
+        ocultar_trampa: f.ocultar_trampa.checked, automata: document.getElementById('automata').value,
+        cadena: document.getElementById('cadena').value})});
+    const j = await r.json();
+    if (!r.ok) { const e = document.createElement('div'); e.className = 'error'; e.textContent = j.error; salida.append(e); return; }
+    const v = document.createElement('p'); v.className = 'veredicto ' + (j.acepta ? 'si' : 'no');
+    v.textContent = j.acepta ? '✔ Cadena ACEPTADA' : '✖ Cadena RECHAZADA'; salida.append(v);
+    const caja = document.createElement('div'); caja.className = 'stepper';
+    caja.innerHTML = '<div class="stepper-barra"><button type="button" class="btn" data-dir="-1">◀ Anterior</button>' +
+      '<button type="button" class="btn" data-dir="1">Siguiente ▶</button><span class="cuenta"></span></div>';
+    j.pasos.forEach(p => {
+      const d = document.createElement('div'); d.className = 'paso'; d.hidden = true;
+      const h = document.createElement('h3'); h.textContent = p.titulo;
+      const t = document.createElement('p'); t.textContent = p.estados;
+      const s = document.createElement('div'); s.className = 'scroll'; s.innerHTML = p.svg;   // SVG generado por nuestro servidor
+      d.append(h, t, s); caja.append(d);
+    });
+    salida.append(caja); montarStepper(caja, 0);
+  });
+})();
+</script>
+</body>
+</html>
